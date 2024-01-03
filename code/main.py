@@ -3,7 +3,7 @@
 
 # screen resizing tut, dafluffypotato: https://www.youtube.com/watch?v=edJZOQwrMKw
 
-import pygame, sys, time
+import pygame, sys, time, json, math, csv
 from level import Level
 from text import Font
 from game_data import *
@@ -46,12 +46,27 @@ for joystick in joysticks:
 font = Font(fonts['small_font'], 'white')
 
 
-def main_menu():
-    '''Put main menu code here and call game function(s)'''
-    game()
+# calculates population estimation for case data using logistic growth
+def math_mod(pop_data):
+    # time is based on months NOT years
+
+    months = list(pop_data.keys())
+    P_init = pop_data["0"]  # initial population at t=0
+    P_current = pop_data[months[-2]]  # Last measured pop size
+    t_current = int(months[-2])  # Time of most recent data point
+    t = int(months[-1])  # time to be estimated
+
+    # interpolated growth rate = (final pop - init pop) / init pop / dif t
+    r = (P_current - P_init) / P_init / int(months[-2])
+    # rearranged logistic growth formula, solving for K
+    k = (-P_current * P_init * math.pow(math.e, -r*t_current) + P_current * P_init) / (P_init - P_current * math.pow(math.e, -r*t_current))
+
+    P_estimate = (P_init * k) / ((k - P_init) * math.pow(math.e, -r*t) + P_init)
+
+    return P_estimate  # return population estimate
 
 
-def game():
+def sim_mod():
     click = False
 
     # delta time
@@ -64,7 +79,7 @@ def game():
     starting_spawn = 'room_1'
     level = Level(fps, '../rooms/tiled_rooms/room_0.tmx', screen, screen_rect, joysticks, starting_spawn)
 
-    run = True
+    run = False  # TODO testing stub, should start as True
     while run:
         # delta time  https://www.youtube.com/watch?v=OmkAUzvwsDk
         dt = time.time() - previous_time
@@ -121,5 +136,74 @@ def game():
         pygame.display.update()
         clock.tick(game_speed)
 
+    return 0
 
-main_menu()
+
+def main(num_cases, iters):
+    error_diffs = []
+
+    with open("../output/out.csv", 'w') as outf:
+        writer = csv.writer(outf)
+        # iterates through all case data (files numerically named)
+        for case in range(num_cases):
+            writer.writerow([f"Case {case}"])  # out -> case title
+            print(f"Beginning case {case}...")
+
+            # -- LOAD CASE DATA --
+            with open(f"../case data/{case}.txt") as f:
+                data = json.load(f)  # dict with case data
+            true_val = data["pop_data"][list(data["pop_data"].keys())[-1]]
+            writer.writerow(["True value", true_val])  # out -> true val
+
+            # -- MATH MODULE --
+            m_estimate = math_mod(data["pop_data"])
+            writer.writerow(["Math", m_estimate])  # out -> math estimate
+            print("-- Mathematical module complete --")
+
+            # -- SIMULATION MODULE --
+            #TODO Implement simulation module
+            s_estimates = ["Program"]
+            # run sim iterations
+            for i in range(iters):
+                s_estimates.append(sim_mod())
+                print(f"Simulation: iteration {i} complete")
+            writer.writerow(s_estimates)  # out -> simulation estimates
+
+            # find average simulation estimate
+            sim_avg_est = 0
+            for i in s_estimates[1:]:
+                sim_avg_est += i
+            sim_avg_est /= iters
+            writer.writerow(["Program avg", sim_avg_est])  # out -> simulation avg estimate
+            print("-- Simulation module complete --")
+
+            # -- ERROR EVALUATION --
+            print("Calculating error")
+            # - MATH ERROR -
+            m_error = ((true_val - m_estimate) / true_val) * 100
+            writer.writerow(["Math error (%)", m_error])  # out -> math error
+
+            # - SIM ERROR -
+            s_error = ((true_val - sim_avg_est) / true_val) * 100
+            writer.writerow(["Simulation error (%)", s_error])  # out -> sim error
+
+            # - ERROR DIFFERENCE -
+            dif = m_error - s_error
+            writer.writerow(["Error difference (%)", dif])  # out -> error diff
+            error_diffs.append(dif)
+
+            print(" -- Error calculation complete --")
+
+            # -- END CASE --
+            writer.writerow("")  # new line in file
+            print(f"Case {case} complete\n")
+
+        # -- AVG ERROR DIFFERENCE --
+        avg_dif = 0
+        for i in error_diffs:
+            avg_dif += i
+        avg_dif /= len(error_diffs)
+        writer.writerow(["Avg error difference", avg_dif])  # out -> avg error difference
+
+
+main(1, 100)

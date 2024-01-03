@@ -1,0 +1,9 @@
+{"location": "Mallee Cliffs National Park, NSW",
+"land size": "9570",
+"pop_data": {"0": 50,
+             "9": 108,
+             "13": 63,
+             "17": 118,
+             "25": 58,
+             "29": 116}
+}
