@@ -2,12 +2,11 @@
 import pygame
 from pytmx.util_pygame import load_pygame  # allows use of tiled tile map files for pygame use
 # - general -
-from game_data import tile_size, controller_map, fonts
+from game_data import tile_size, fonts
 from support import *
 # - tiles -
 from tiles import StaticTile, CollideableTile, HazardTile
 # - objects -
-from player import Player
 from trigger import SpawnTrigger, Trigger
 from spawn import Spawn
 # - systems -
@@ -16,7 +15,7 @@ from text import Font
 
 
 class Level:
-    def __init__(self, fps, level_data, screen_surface, screen_rect, controllers, starting_spawn):
+    def __init__(self, level_data, screen_surface, screen_rect, starting_spawn):
         # TODO testing, remove
         self.dev_debug = False
 
@@ -26,15 +25,13 @@ class Level:
         self.screen_width = screen_surface.get_width()
         self.screen_height = screen_surface.get_height()
 
-        self.controllers = controllers
-
         self.starting_spawn = starting_spawn
         self.player_spawn = None  # begins as no spawn as filled when player is initialised
 
         self.pause = False
         self.pause_pressed = False
 
-        dt = 1  # dt starts as 1 because on the first frame we can assume it is 60fps. dt = 1/60 * 60 = 1
+        dt = 1
 
         # - get level data -
         tmx_data = load_pygame(resource_path(level_data))  # tile map file
@@ -57,8 +54,7 @@ class Level:
         self.transitions = self.create_object_layer(tmx_data, 'transitions', 'Trigger')
         self.player_spawns = self.create_object_layer(tmx_data, 'spawns', 'Spawn')
         self.spawn_triggers = self.create_object_layer(tmx_data, 'spawns', 'SpawnTrigger')
-        # self.player_spawn_triggers = self.create_object_group(tmx_data, 'spawns', 'Trigger')
-        self.player = self.create_object_layer(tmx_data, '', 'Player')  # must be completed after player_spawns layer
+        #self.player = self.create_object_layer(tmx_data, '', 'Player')  # must be completed after player_spawns layer
 
         # get tiles
         self.collideable = self.create_tile_layer(tmx_data, 'collideable', 'CollideableTile')
@@ -69,11 +65,9 @@ class Level:
             'y': self.create_tile_layer(tmx_data, 'abs camera boundaries y', 'CollideableTile')}
 
         # - camera setup -
-        self.camera = Camera(self.screen_surface, self.screen_rect, self.player.sprite, self.abs_camera_boundaries,
-                             controllers)
-        self.camera.focus(True)  # focuses camera on target
-        scroll_value = self.camera.get_scroll(dt, fps)  # returns scroll, now focused
-        self.player.sprite.apply_scroll(scroll_value)  # applies new scroll to player
+        self.camera = Camera(self.screen_surface, self.screen_rect, self.abs_camera_boundaries)
+        scroll_value = self.camera.get_scroll(dt)  # returns scroll
+        #self.player.sprite.apply_scroll(scroll_value)  # applies new scroll to player
         self.all_tile_sprites.update(scroll_value)  # applies new scroll to all tile sprites
         self.all_object_sprites.update(scroll_value)  # applies new scroll to all object sprites'''
 
@@ -104,11 +98,12 @@ class Level:
                 self.all_tile_sprites.add(tile)
 
         elif type == 'HazardTile':
-            for x, y, surface in tiles:
+            pass
+            '''for x, y, surface in tiles:
                 tile = HazardTile((x * tile_size, y * tile_size), (tile_size, tile_size), parallax, surface,
                                   self.player.sprite)
                 sprite_group.add(tile)
-                self.all_tile_sprites.add(tile)
+                self.all_tile_sprites.add(tile)'''
 
         else:
             raise Exception(f"Invalid create_tile_group type: '{type}' ")
@@ -148,14 +143,14 @@ class Level:
                     sprite_group[spawn.name] = spawn
                     self.all_object_sprites.add(spawn)
 
-        elif object_class == 'Player':
-            sprite_group = pygame.sprite.GroupSingle()
-            # finds the correct starting position corresponding to the last room/transition
-            # TODO remove need for self.player_spawns
-            spawn = self.player_spawns[self.starting_spawn]
-            player = Player(self, spawn)
-            sprite_group.add(player)
-            self.player_spawn = spawn  # stores the spawn instance for future respawn
+            '''elif object_class == 'Player':
+                sprite_group = pygame.sprite.GroupSingle()
+                # finds the correct starting position corresponding to the last room/transition
+                # TODO remove need for self.player_spawns
+                spawn = self.player_spawns[self.starting_spawn]
+                player = Player(self, spawn)
+                sprite_group.add(player)
+                self.player_spawn = spawn  # stores the spawn instance for future respawn'''
 
         else:
             raise Exception(f"Invalid create_object_group type: '{type}' ")
@@ -203,7 +198,7 @@ class Level:
         keys = pygame.key.get_pressed()
 
         # pause pressed prevents holding key and rapidly switching between T and F
-        if keys[pygame.K_p] or self.get_controller_input('pause'):
+        if keys[pygame.K_p]:
             if not self.pause_pressed:
                 self.pause = not self.pause
             self.pause_pressed = True
@@ -213,25 +208,10 @@ class Level:
 
 
         # TODO testing, remove
-        if (keys[pygame.K_z] and keys[pygame.K_LSHIFT]) or self.get_controller_input('dev off'):
+        if keys[pygame.K_z] and keys[pygame.K_LSHIFT]:
             self.dev_debug = False
-        elif keys[pygame.K_z] or self.get_controller_input('dev on'):
+        elif keys[pygame.K_z]:
             self.dev_debug = True
-
-    # checks controller inputs and returns true or false based on passed check
-    def get_controller_input(self, input_check):
-        # check if controllers are connected before getting controller input (done every frame preventing error if suddenly disconnected)
-        if len(self.controllers) > 0:
-            controller = self.controllers[0]
-            # TODO testing, remove
-            if input_check == 'dev on' and controller.get_button(controller_map['share']):
-                return True
-            elif input_check == 'dev off' and controller.get_button(controller_map['share']) and controller.get_button(controller_map['X']):
-                return True
-
-            elif input_check == 'pause' and controller.get_button(controller_map['options']):
-                return True
-        return False
 
 # -- visual --
 
@@ -257,7 +237,7 @@ class Level:
 
     # updates the level allowing tile scroll and displaying tiles to screen
     # order is equivalent of layers
-    def update(self, dt, fps):
+    def update(self, dt):
         # #### INPUT > GAME(checks THEN UPDATE) > RENDER ####
         # checks deal with previous frames interactions. Update creates interactions for this frame which is then diplayed
         '''player = self.player.sprite'''
@@ -269,8 +249,7 @@ class Level:
         if not self.pause:
 
             # scroll -- must be first, camera calculates scroll, stores it and returns it for application
-            '''scroll_value = self.camera.return_scroll(dt, fps)
-            self.camera.focus(False)'''
+            scroll_value = self.camera.get_scroll(dt)
 
             # which object should handle collision? https://gamedev.stackexchange.com/questions/127853/how-to-decide-which-gameobject-should-handle-the-collision
 
@@ -284,21 +263,22 @@ class Level:
             '''if player.get_respawn():
                 self.camera.focus(True)'''
 
-            # checks which collideable tiles are in screen view.
+            '''# checks which collideable tiles are in screen view.
             # TODO in function? More tile layers included? Use for tile rendering? IF ADD MORE LAYERS, CHANGE PLAYER TILES COLLISION LAYER
-            '''self.tiles_in_screen = []
+            self.tiles_in_screen = []
             for tile in self.collideable:
                 if tile.hitbox.colliderect(self.screen_rect):
                     self.tiles_in_screen.append(tile)'''
 
         # -- UPDATES -- player needs to be before tiles for scroll to function properly
             # TODO IF TILES_IN_SCREEN ATTR IS CHANGED TO INCLUDE MORE LAYERS, CHANGE BACK TO self.collideable HERE!!!!
-            '''player.update(dt, self.tiles_in_screen, scroll_value, self.player_spawn)
-            self.all_sprites.update(scroll_value)'''
+            #player.update(dt, self.tiles_in_screen, scroll_value, self.player_spawn)
+            self.all_tile_sprites.update(scroll_value)
+            self.all_object_sprites.update(scroll_value)
 
         # -- RENDER --
         # Draw
-        self.player.sprite.draw()
+        #self.player.sprite.draw()
         self.draw_tile_group(self.collideable)
         self.draw_tile_group(self.hazards)
 
@@ -309,4 +289,4 @@ class Level:
         # Dev Tools
         if self.dev_debug:
             '''put debug tools here'''
-            pygame.draw.line(self.screen_surface, 'red', (0, 0), (15, 15), 1)
+            pygame.draw.circle(self.screen_surface, "red", (self.screen_width//2, self.screen_height//2), 3)

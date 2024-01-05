@@ -35,13 +35,6 @@ screen_rect = screen.get_rect()  # used for camera scroll boundaries
 pygame.display.set_caption('Sample')
 pygame.display.set_icon(pygame.image.load(resource_path('../assets/icon/app_icon.png')))
 
-# get controller joysticks
-pygame.joystick.init()
-joysticks = [pygame.joystick.Joystick(i) for i in range(pygame.joystick.get_count())]
-print(f"joy {len(joysticks)}")
-for joystick in joysticks:
-    joystick.init()
-
 # font
 font = Font(fonts['small_font'], 'white')
 
@@ -71,21 +64,17 @@ def sim_mod():
 
     # delta time
     previous_time = time.time()
-    dt = time.time() - previous_time
-    previous_time = time.time()
-    fps = clock.get_fps()
 
     # MODIFY TO LOAD DESIRED ROOMS
     starting_spawn = 'room_1'
-    level = Level(fps, '../rooms/tiled_rooms/room_0.tmx', screen, screen_rect, joysticks, starting_spawn)
+    level = Level('../rooms/tiled_rooms/room_0.tmx', screen, screen_rect, starting_spawn)
 
-    run = False  # TODO testing stub, should start as True
+    run = True
     while run:
         # delta time  https://www.youtube.com/watch?v=OmkAUzvwsDk
         dt = time.time() - previous_time
         dt *= 60  # keeps units such that movement += 1 * dt means add 1px if at 60fps
         previous_time = time.time()
-        fps = clock.get_fps()
 
         # x and y mouse pos
         mx, my = pygame.mouse.get_pos()
@@ -117,16 +106,9 @@ def sim_mod():
                 if event.button == 1:
                     click = True
 
-            # Controller events
-            elif event.type == pygame.JOYBUTTONDOWN:
-                if event.button == controller_map['left_analog_press']:
-                    run = False
-                    pygame.quit()
-                    sys.exit()
-
         # -- Update --
-        screen.fill((48, 99, 142))  # fill background with colour
-        level.update(dt, fps)  # runs level processes
+        screen.fill((230, 127, 13))  # fill background with colour
+        level.update(dt)  # runs level processes
 
         font.render(f'FPS: {str(clock.get_fps())}', screen, (0, 0))  # TODO Debugging only, remove
 
@@ -139,7 +121,9 @@ def sim_mod():
     return 0
 
 
-def main(num_cases, iters):
+def main(num_cases):
+    iters = int(input("ABM Simulation Iterations: "))
+
     error_diffs = []
 
     with open("../output/out.csv", 'w') as outf:
@@ -206,4 +190,4 @@ def main(num_cases, iters):
         writer.writerow(["Avg error difference", avg_dif])  # out -> avg error difference
 
 
-main(1, 100)
+main(1)
