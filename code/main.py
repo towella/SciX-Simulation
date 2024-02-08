@@ -59,7 +59,7 @@ def math_mod(pop_data):
     return P_estimate  # return population estimate
 
 
-def sim_mod():
+def sim_mod(sim_data):
     click = False
 
     # delta time
@@ -67,7 +67,7 @@ def sim_mod():
 
     # MODIFY TO LOAD DESIRED ROOMS
     starting_spawn = 'room_1'
-    level = Level('../rooms/tiled_rooms/room_0.tmx', screen, screen_rect, starting_spawn)
+    level = Level('../rooms/tiled_rooms/room_0.tmx', sim_data, screen, screen_rect, starting_spawn)
 
     run = True
     while run:
@@ -149,7 +149,7 @@ def main(num_cases):
             s_estimates = ["Program"]
             # run sim iterations
             for i in range(iters):
-                s_estimates.append(sim_mod())
+                s_estimates.append(sim_mod(data))
                 print(f"Simulation: iteration {i} complete")
             writer.writerow(s_estimates)  # out -> simulation estimates
 

@@ -3,12 +3,16 @@ from game_data import tile_size
 
 
 class Camera():
-    def __init__(self, surface, screen_rect, abs_boundaries):
+    def __init__(self, surface, screen_rect, room_dim):
         self.scroll_value = [0, 0]  # the scroll, shifts the world to create camera effect
-        self.abs_boundaries = abs_boundaries
 
         # -- move --
         self.move_speed = 5
+
+        # -- room --
+        room_width = room_dim[0]
+        room_height = room_dim[1]
+        self.room_rect = pygame.rect.Rect(0, 0, room_width, room_height)
 
         #-- zoom --
         self.zoom = 1
@@ -64,52 +68,21 @@ class Camera():
             self.zoom = 1
 
     def camera_boundaries(self):
-        # enables scroll camera boundaries
-        for tile in self.abs_boundaries['x']:
-            # having proxy variables allows modification of value for maths without moving actual tile pos
-            tile_right = tile.hitbox.right
-            tile_left = tile.hitbox.left
-            # if the screen's horizontal is a pixel away or inside of tile within collision tollerance, stop scroll and snap
-            # must be moving towards the wall, otherwise cant move away from the wall in the other direction
-            # TODO if on the screen
-            # TODO respawn
-            # TODO general bounds
-            if self.collision_tolerance_x > tile_right >= self.screen_rect.left and self.scroll_value[0] < 0:
+        # must MODIFY existing scroll rather than reassigning
+        # if edge of screen has exceeded edge of level, reduce scroll based on difference between
+        # MODIFED level edge (hence +ing or -ing scroll value as well as just finding dif between edges) and screen edge
 
-                # stop scroll
-                self.scroll_value[0] = 0
-                # while the screen is in the tile, snap the screen to the tile grid.
-                # allows pixel perfect boundaries
-                while tile_right > self.screen_rect.left:
-                    self.scroll_value[0] += 1
-                    tile_right -= 1
-                break
-            # TODO potentially need abs?
-            elif (self.screen_rect.right - self.collision_tolerance_x) < tile_left <= self.screen_rect.right and \
-                    self.scroll_value[0] > 0:
-                self.scroll_value[0] = 0
-                while tile_left < self.screen_rect.right:
-                    self.scroll_value[0] -= 1
-                    tile_left += 1
-                break
+        # horizontal
+        if self.screen_rect.left <= self.room_rect.left - self.scroll_value[0]:
+            self.scroll_value[0] += abs(self.room_rect.left - self.screen_rect.left - self.scroll_value[0])
+        if self.screen_rect.right >= self.room_rect.right - self.scroll_value[0]:
+            self.scroll_value[0] += -abs(self.screen_rect.right - self.room_rect.right + self.scroll_value[0])
 
-        for tile in self.abs_boundaries['y']:
-            tile_top = tile.hitbox.top
-            tile_bottom = tile.hitbox.bottom
-            # TODO potentially need abs?
-            if (self.screen_rect.bottom - self.collision_tolerance_y) < tile_top <= self.screen_rect.bottom and \
-                    self.scroll_value[1] > 0:
-                self.scroll_value[1] = 0
-                while tile_top < self.screen_rect.bottom:
-                    self.scroll_value[1] -= 1
-                    tile_top += 1
-                break
-            elif self.collision_tolerance_y > tile_bottom >= self.screen_rect.top and self.scroll_value[1] < 0:
-                self.scroll_value[1] = 0
-                while tile_bottom > self.screen_rect.top:
-                    self.scroll_value[1] += 1
-                    tile_bottom -= 1
-                break
+        # vertical
+        if self.screen_rect.top <= self.room_rect.top - self.scroll_value[1]:
+            self.scroll_value[1] += abs(self.room_rect.top - self.screen_rect.top - self.scroll_value[1])
+        if self.screen_rect.bottom >= self.room_rect.bottom - self.scroll_value[1]:
+            self.scroll_value[1] -= abs(self.screen_rect.bottom - self.room_rect.bottom + self.scroll_value[1])
 
 # -- Getters and Setters --
 
@@ -119,11 +92,15 @@ class Camera():
         self.scroll_value = [0, 0]  # reset
         self.get_input()
 
-        self.camera_boundaries()
-
         # dt
         self.scroll_value[0] = round(self.scroll_value[0] * dt)
         self.scroll_value[1] = round(self.scroll_value[1] * dt)
+
+        self.camera_boundaries()
+
+        # shift room boundary rect
+        self.room_rect.center = [self.room_rect.center[0] - self.scroll_value[0],
+                                 self.room_rect.center[1] - self.scroll_value[1]]
 
         return self.scroll_value
 
