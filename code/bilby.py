@@ -4,19 +4,23 @@ from game_data import tile_size, screen_width, screen_height
 from support import get_angle_rad, get_angle_deg, get_distance
 
 
-# SET UP FOR PLATFORMER SINCE PLATFORMERS ARE HARDER TO CREATE A PLAYER FOR
 class Bilby(pygame.sprite.Sprite):
     def __init__(self, screen_surface, spawn):
         super().__init__()
         self.surface = screen_surface
 
-        # -- player setup --
+        # -- setup --
         # - Body -
         self.speed = 1
         body_radius = 1
         self.body = BodySegment(screen_surface, [spawn[0], spawn[1]], body_radius)
+        self.sex = randint(1, 2)  # 1 is male, 2 is female
+        self.age = 0
+        lifespan = (5, 7)  # min, max in years
+        self.max_age = randint(lifespan[0] * 100, lifespan[1] * 100) / 100  # maximum age in years to 2dp (4 day precision)
+        self.attractiveness = randint(0, 100) / 100  # range from 0 to 1 indicating attractiveness of individual
 
-        # -- player movement --
+        # -- movement --
         # collisions -- provides a buffer allowing late collision
         self.collision_tolerance = tile_size
 
