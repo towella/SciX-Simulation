@@ -3,13 +3,18 @@ from random import randint
 import threading
 import time
 from bilby import Bilby
+from fox import Fox
+from feed_manager import FeedManager
 
 
 def format_file_header(species, years):
     header = ["Foxes in % of Bilby Pop"]
     for species in species:
-        for year in range(1, years+1):
-            header.append(f"{species.capitalize()} Year {year}")
+        for year in range(0, years+1):
+            if year == 0:
+                header.append(f"{species.capitalize()} Initial")
+            else:
+                header.append(f"{species.capitalize()} Year {year}")
     return ",".join(header)
 
 
@@ -27,6 +32,56 @@ def output_to_file(file, pop_data):
     file.write("\n"+pop_data)
 
 
+def run_simulation():
+    agents = {species[0]: [Bilby() for agent in range(bilbies)],
+              species[1]: [Fox() for agent in range(foxes)],
+              species[2]: [FeedManager()]}
+    # begins with initial populations
+    iter_population_data = {species[0]: [str(bilbies)],
+                            species[1]: [str(foxes)],
+                            species[2]: [str(initial_feed)]}
+    feed_to_add = 0
+
+    # --- TIMESTEP ---
+    for timestep in range(max_time):
+
+        # TODO debug -- current populations
+        if timestep % day24 == 0:
+            print(f"Bilbies {len(agents[species[0]])}, Foxes {len(agents[species[1]])}, Food {len(agents[species[2]][0])}")
+
+        # -- UPDATES --
+        for key in species:
+            pop_indices = []
+            new_agents = []
+            # remove if dead, otherwise update and collect offspring
+            for i, agent in enumerate(agents[key]):
+                if not agent.alive:
+                    pop_indices.append(i)
+                else:
+                    new_agents += agent.update(agents, timestep)  # agent.update -> [offspring_agent]
+            # add in new offspring
+            agents[key] += new_agents
+
+            # pop in reverse order so lower indices are unaffected by modification
+            pop_indices.sort()
+            pop_indices.reverse()
+            for i in pop_indices:
+                agents[key].pop(i)
+
+        # -- CHECKS --
+        # if a year has passed record population data (exclude initial)
+        if timestep % year == 0 and timestep > 0:
+            for key in species:
+                iter_population_data[key].append(str(len(agents[key])))
+            print("Year " + str(timestep // year))
+
+        # kill instance if one bilby left (none left to reproduce) or all are dead
+        if len(agents[species[0]]) <= 1:
+            break
+
+    return iter_population_data
+
+
 def percentage_set(percentage):
     print(f"Beginning {percentage}%...")  # <-- progress update
     set_population_data = []
@@ -42,27 +97,11 @@ def percentage_set(percentage):
         itert = time.time()
         for iteration in range(iterations):
             t = time.time()
-            agents = {species[0]: [Bilby() for agent in range(bilbies)],
-                      species[1]: [],
-                      species[2]: [],
-                      species[3]: [],
-                      species[4]: []}
-            iter_population_data = {}
-            for key in species:
-                iter_population_data[key] = []
-
-            # --- TIMESTEP ---
-            for timestep in range(max_time):
-                # TODO UPDATE ALL AGENTS
-
-                # if a year has passed record population data
-                # TODO VERY COSTLY - 0.3 SECONDS PER ITER!!!!
-                if timestep % year == 0:
-                    for key in species:
-                        iter_population_data[key].append(str(len(agents[key])))
+            
+            iter_pop_data = run_simulation()
 
             # save iteration population data
-            set_population_data.append(gen_iter_pop_line(iter_population_data, species))
+            set_population_data.append(gen_iter_pop_line(iter_pop_data, species))
 
             print(iteration + 1, time.time() - t)  # <-- log time for one iteration
 

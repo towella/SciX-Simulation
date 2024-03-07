@@ -2,31 +2,65 @@ from standard_values import *
 from random import randint
 
 
+def get_reproduction_timer():
+    gestation = randint(12 * day24, 14 * day24)
+    pouch = randint(75 * day24, 80 * day24)
+    burrow = 2 * week
+    return gestation + pouch + burrow
+
+
 class Bilby:
     def __init__(self):
         # TODO ? self.agentID = ID  # unique ID int
 
         # - age -
-        self.age = 0  # age in minutes
-        lifespan = (5, 7)  # in years
-        self.max_age = randint(lifespan[0] * 525600, lifespan[1] * 525600)  # lifetime in minutes (5 to 7 year lifespan)
+        self.age = randint(75 * day24, 80 * day24) + 2 * week  # age in minutes when become independent
+        self.max_age = randint(5 * year, 7 * year)  # lifetime in minutes (5 to 7 year lifespan)
+        self.alive = True  # whether alive or dead
 
         # - gender -
         self.gender = randint(1, 2)  # 1 = male, 2 = female
 
-        # - hunger -   currently assuming ample food
-        '''self.energy = 550.0  # energy in KJ/d
-        self.energy_loss = 0.8  # energy loss per minute in KJ (timestep) (0.8 * 60 * 12 ~= 550)'''
+        # - hunger -
+        self.feed_per_day = 1  # required amount of feed to consume each day
 
-        # - reproduction -
-        # male
-        if self.gender == 1:
-            self.reproduce_timer = 8 * month  # can reproduce once mature (time = timer)
-            self.reproduce_interval = day24  # minimum interval between litters
-        # female
-        else:
-            self.reproduce_timer = 5 * month
-            self.reproduce_interval = 3 * month
+        # - reproduction (Only used by females) -
+        # time until new litter has been conceived, birthed, gone through infancy and left natal burrow
+        # random offset to reproductive cycle
+        self.reproduce_timer = get_reproduction_timer() + randint(0, year / 4)
 
-    def update(self):
+        # - saftey -
+        self.in_burrow = False  # new bilbies begin having left natal burrow
+
+    def kill(self):
+        self.alive = False
+
+    def update(self, agents, time):
+        feed_manager = agents[species[2]][0]
         self.age += 1  # increment age
+        offspring = []
+
+        # kill agent
+        if self.age >= self.max_age:
+            self.alive = False
+        else:
+            # eat once a day if there is feed available
+            if time % day24 == 0:
+                for feed in range(self.feed_per_day):
+                    if len(feed_manager) > 0:
+                        feed_manager.kill()  # remove a feed from feed manager
+                    # die if can't eat
+                    else:
+                        self.kill()
+                        break
+
+            # reproduce
+            # must be a female that is older than 5 months to reproduce
+            if self.gender == 2 and self.age > 5 * month:
+                self.reproduce_timer -= 1
+                if self.reproduce_timer == 0:
+                    self.reproduce_timer = get_reproduction_timer()
+                    for child in range(randint(1, 3)):
+                        offspring.append(Bilby())  # TODO <--
+
+        return offspring
