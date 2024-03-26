@@ -5,6 +5,7 @@ import time
 from bilby import Bilby
 from fox import Fox
 from feed_manager import FeedManager
+import matplotlib.pyplot as plt
 
 
 def format_file_header(species, years):
@@ -32,22 +33,48 @@ def output_to_file(file, pop_data):
     file.write("\n"+pop_data)
 
 
+# TODO currently hardcoded
+def plot_graph(pops):
+    plt.plot([i + 1 for i in range(len(pops[0]))], pops[0], label="Bilbies")
+    plt.plot([i + 1 for i in range(len(pops[1]))], pops[1], label="Foxes")
+    plt.plot([i + 1 for i in range(len(pops[2]))], pops[2], label="Grass")
+    plt.legend()
+    plt.show(block=True)
+
+
 def run_simulation():
-    agents = {species[0]: [Bilby() for agent in range(bilbies)],
-              species[1]: [Fox() for agent in range(foxes)],
+    agents = {species[0]: [Bilby(initial_pop=True) for agent in range(bilbies)],
+              species[1]: [], #[Fox() for agent in range(foxes)],
               species[2]: [FeedManager()]}
     # begins with initial populations
     iter_population_data = {species[0]: [str(bilbies)],
-                            species[1]: [str(foxes)],
-                            species[2]: [str(initial_feed)]}
+                            species[1]: [str(0)],
+                            species[2]: [str(max_feed)]}  # begins with the maximum feed possible for the system
+
+    # graphing datapoints lists
+    bilby_pop = [int(iter_population_data[species[0]][0])]
+    fox_pop = [int(iter_population_data[species[1]][0])]
+    grass_pop = [int(iter_population_data[species[2]][0])]
+
     feed_to_add = 0
-
     # --- TIMESTEP ---
-    for timestep in range(max_time):
+    t = time.time()
+    for timestep in range(-burn_in, max_time):
 
-        # TODO debug -- current populations
-        if timestep % day24 == 0:
+        # TODO Graphing Debug
+        # log population for graphing (after startup)
+        if timestep % log_graph == 0 and timestep >= 0:
             print(f"Bilbies {len(agents[species[0]])}, Foxes {len(agents[species[1]])}, Food {len(agents[species[2]][0])}")
+            bilby_pop.append(len(agents[species[0]]))
+            fox_pop.append(len(agents[species[1]]))
+            grass_pop.append(len(agents[species[2]][0]))
+        # plot and display graph each year (after startup)
+        if timestep % display_graph == 0 and timestep >= 0:
+            plot_graph([bilby_pop, fox_pop, grass_pop])
+
+        # burn in (add foxes into enclosure at specified day)
+        if timestep / day24 == burn_in:
+            agents[species[1]] = [Fox() for agent in range(foxes)]
 
         # -- UPDATES --
         for key in species:
@@ -78,7 +105,8 @@ def run_simulation():
         # kill instance if one bilby left (none left to reproduce) or all are dead
         if len(agents[species[0]]) <= 1:
             break
-
+    print("One iter: " + str(time.time() - t))
+    plot_graph([bilby_pop, fox_pop, grass_pop])  # TODO testing
     return iter_population_data
 
 

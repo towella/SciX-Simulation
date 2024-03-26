@@ -4,7 +4,8 @@ from random import randint
 
 class FeedManager:
     def __init__(self):
-        self.feed = initial_feed
+        self.feed = max_feed
+        self.cap = max_feed
         self.increase_feed = 0
         self.alive = True
 
@@ -21,5 +22,8 @@ class FeedManager:
         if self.increase_feed >= 1:
             self.feed += int(self.increase_feed)
             self.increase_feed -= int(self.increase_feed)  # remove integer part of float, leaving decimal
+            # cap the amount of feed that can be supported by the environment (creates a carrying capacity for plants)
+            if self.feed > self.cap:
+                self.feed = self.cap
 
         return []  # return no offspring

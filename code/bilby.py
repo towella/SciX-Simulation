@@ -2,6 +2,7 @@ from standard_values import *
 from random import randint
 
 
+# gets approximately 3 months
 def get_reproduction_timer():
     gestation = randint(12 * day24, 14 * day24)
     pouch = randint(75 * day24, 80 * day24)
@@ -10,11 +11,15 @@ def get_reproduction_timer():
 
 
 class Bilby:
-    def __init__(self):
+    def __init__(self, initial_pop=False):
         # TODO ? self.agentID = ID  # unique ID int
 
         # - age -
-        self.age = randint(75 * day24, 80 * day24) + 2 * week  # age in minutes when become independent
+        # if part of initial population of bilbies, randomise age otherwise start young
+        if initial_pop:
+            self.age = randint(0, 7 * year)
+        else:
+            self.age = randint(75 * day24, 80 * day24) + 2 * week  # age in minutes when become independent
         self.max_age = randint(5 * year, 7 * year)  # lifetime in minutes (5 to 7 year lifespan)
         self.alive = True  # whether alive or dead
 
@@ -26,11 +31,11 @@ class Bilby:
 
         # - reproduction (Only used by females) -
         # time until new litter has been conceived, birthed, gone through infancy and left natal burrow
-        # random offset to reproductive cycle
-        self.reproduce_timer = get_reproduction_timer() + randint(0, year / 4)
-
-        # - saftey -
-        self.in_burrow = False  # new bilbies begin having left natal burrow
+        # if part of initial population, randomise timer otherwise start from 0
+        if initial_pop:
+            self.reproduce_timer = randint(0, year // 4)
+        else:
+            self.reproduce_timer = get_reproduction_timer()
 
     def kill(self):
         self.alive = False

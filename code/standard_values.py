@@ -16,11 +16,6 @@ if use_threading:
 else:
     print("Not using threading")
 
-# simulation duration
-iterations = 1
-years = 8  # 2 generations of bilbies
-max_time = years * year
-
 # land and population density (individuals per hectare)
 land_size = 5000  # land size in hectares
 bilby_density = 0.01555555556
@@ -29,8 +24,17 @@ bilby_density = 0.01555555556
 bilby_interact = bilby_density/1000
 
 # populations
-bilbies = 200  # 70
+bilbies = 15  # 70
 foxes = 0
-initial_feed = 100
-carrying_capacity = 28
-feed_per_step = 0.02  # carrying_capacity / day24
+burn_in = 200  # in days
+max_feed = 150
+feed_per_step = max_feed / week
+
+# simulation duration
+iterations = 1
+years = 12  # 3 generations of bilbies
+max_time = years * year + burn_in  # length of iter + startup time
+
+# graphing
+display_graph = year
+log_graph = day24
