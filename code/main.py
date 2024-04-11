@@ -1,11 +1,11 @@
 from standard_values import *
-from random import randint
 import threading
 import time
-from bilby import Bilby
-from fox import Fox
+from bilby import BilbyManager
+from fox import FoxManager
+from hunter_manager import HunterManager
 from feed_manager import FeedManager
-import matplotlib.pyplot as plt
+from grapher import Grapher
 
 
 def format_file_header(species, years):
@@ -33,85 +33,52 @@ def output_to_file(file, pop_data):
     file.write("\n"+pop_data)
 
 
-# TODO currently hardcoded
-def plot_graph(pops):
-    plt.plot([i + 1 for i in range(len(pops[0]))], pops[0], label="Bilbies")
-    plt.plot([i + 1 for i in range(len(pops[1]))], pops[1], label="Foxes")
-    plt.plot([i + 1 for i in range(len(pops[2]))], pops[2], label="Grass")
-    plt.legend()
-    plt.show(block=True)
-
-
 def run_simulation():
-    agents = {species[0]: [Bilby(initial_pop=True) for agent in range(bilbies)],
-              species[1]: [], #[Fox() for agent in range(foxes)],
-              species[2]: [FeedManager()]}
-    # begins with initial populations
-    iter_population_data = {species[0]: [str(bilbies)],
-                            species[1]: [str(0)],
-                            species[2]: [str(max_feed)]}  # begins with the maximum feed possible for the system
-
-    # graphing datapoints lists
-    bilby_pop = [int(iter_population_data[species[0]][0])]
-    fox_pop = [int(iter_population_data[species[1]][0])]
-    grass_pop = [int(iter_population_data[species[2]][0])]
+    agents = {species[0]: BilbyManager(),
+              species[1]: FoxManager(),
+              species[2]: FeedManager(),
+              species[3]: HunterManager()}
+    # begins with no data points as they can not be assumed after burn in period
+    iter_population_data = {species[0]: [],
+                            species[1]: [],
+                            species[2]: [],
+                            species[3]: []}
+    graph = Grapher()
 
     feed_to_add = 0
     # --- TIMESTEP ---
     t = time.time()
     for timestep in range(-burn_in, max_time):
+        # TODO: Terminal logging for testing
+        if timestep < 0:
+            print(f"Burn in day: [{timestep // day24}]")
+        else:
+            print(f"Time day: [{timestep // day24}] | Bilbies {len(agents[species[0]])}, Foxes {len(agents[species[1]])}, Food {len(agents[species[2]])}")
 
-        # TODO Graphing Debug
-        # log population for graphing (after startup)
-        if timestep % log_graph == 0 and timestep >= 0:
-            print(f"Bilbies {len(agents[species[0]])}, Foxes {len(agents[species[1]])}, Food {len(agents[species[2]][0])}")
-            bilby_pop.append(len(agents[species[0]]))
-            fox_pop.append(len(agents[species[1]]))
-            grass_pop.append(len(agents[species[2]][0]))
-        # plot and display graph each year (after startup)
-        if timestep % display_graph == 0 and timestep >= 0:
-            plot_graph([bilby_pop, fox_pop, grass_pop])
-
-        # burn in (add foxes into enclosure at specified day)
-        if timestep / day24 == burn_in:
-            agents[species[1]] = [Fox() for agent in range(foxes)]
+        # update graph (after addition of foxes for first data point to reflect t=0)
+        graph.update(timestep, agents)
 
         # -- UPDATES --
         for key in species:
-            pop_indices = []
-            new_agents = []
-            # remove if dead, otherwise update and collect offspring
-            for i, agent in enumerate(agents[key]):
-                if not agent.alive:
-                    pop_indices.append(i)
-                else:
-                    new_agents += agent.update(agents, timestep)  # agent.update -> [offspring_agent]
-            # add in new offspring
-            agents[key] += new_agents
-
-            # pop in reverse order so lower indices are unaffected by modification
-            pop_indices.sort()
-            pop_indices.reverse()
-            for i in pop_indices:
-                agents[key].pop(i)
+            agents[key].update(timestep, agents)
 
         # -- CHECKS --
-        # if a year has passed record population data (exclude initial)
-        if timestep % year == 0 and timestep > 0:
+        # if a year has passed record population data (include initial t=0 after burn in)
+        if timestep % year == 0:
             for key in species:
                 iter_population_data[key].append(str(len(agents[key])))
             print("Year " + str(timestep // year))
 
-        # kill instance if one bilby left (none left to reproduce) or all are dead
-        if len(agents[species[0]]) <= 1:
+        # kill instance if all bilbies are dead :(
+        if len(agents[species[0]]) <= 0:
             break
     print("One iter: " + str(time.time() - t))
-    plot_graph([bilby_pop, fox_pop, grass_pop])  # TODO testing
+    graph.plot_graph()  # display graph before next iter
     return iter_population_data
 
 
 def percentage_set(percentage):
-    print(f"Beginning {percentage}%...")  # <-- progress update
+    print(f"\nBeginning {percentage}%...")  # <-- progress update
     set_population_data = []
 
     # open file once rather than every time output

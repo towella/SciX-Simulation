@@ -2,6 +2,35 @@ from standard_values import *
 from random import randint
 
 
+class BilbyManager:
+    def __init__(self):
+        self.bilbies = [Bilby(initial_pop=True) for agent in range(bilbies)]
+
+    def __len__(self):
+        return len(self.bilbies)
+
+    def attempt_hunt(self, sensitivity):
+        scaled_hunt(self.bilbies, sensitivity)
+
+    def update(self, timestep, agents):
+        pop_indices = []
+        new_agents = []
+        # remove if dead, otherwise update and collect offspring
+        for i, agent in enumerate(self.bilbies):
+            if not agent.alive:
+                pop_indices.append(i)
+            else:
+                new_agents += agent.update(timestep, agents)  # agent.update -> [offspring_agent]
+        # add in new offspring
+        self.bilbies += new_agents
+
+        # pop in reverse order so lower indices are unaffected by modification
+        pop_indices.sort()
+        pop_indices.reverse()
+        for i in pop_indices:
+            self.bilbies.pop(i)
+
+
 # gets approximately 3 months
 def get_reproduction_timer():
     gestation = randint(12 * day24, 14 * day24)
@@ -40,8 +69,8 @@ class Bilby:
     def kill(self):
         self.alive = False
 
-    def update(self, agents, time):
-        feed_manager = agents[species[2]][0]
+    def update(self, timestep, agents):
+        feed_manager = agents[species[2]]
         self.age += 1  # increment age
         offspring = []
 
@@ -50,7 +79,7 @@ class Bilby:
             self.alive = False
         else:
             # eat once a day if there is feed available
-            if time % day24 == 0:
+            if timestep % day24 == 0:
                 for feed in range(self.feed_per_day):
                     if len(feed_manager) > 0:
                         feed_manager.kill()  # remove a feed from feed manager
@@ -66,6 +95,6 @@ class Bilby:
                 if self.reproduce_timer == 0:
                     self.reproduce_timer = get_reproduction_timer()
                     for child in range(randint(1, 3)):
-                        offspring.append(Bilby())  # TODO <--
+                        offspring.append(Bilby())
 
         return offspring
