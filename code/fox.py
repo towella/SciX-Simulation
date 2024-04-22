@@ -61,6 +61,7 @@ class Fox:
         # if still alive
         else:
             # no hunting during burn in
-            # every week, attempt to kill one bilby if bilbies are still alive
-            if timestep >= 0 and timestep % week == 0:
+            # every week (relative to the fox's age to distribute hunting randomly over time),
+            # attempt to kill one bilby
+            if timestep >= 0 and self.age % week == 0:
                 agents[species[0]].attempt_hunt(self.sensitivity)

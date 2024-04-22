@@ -41,8 +41,6 @@ def get_reproduction_timer():
 
 class Bilby:
     def __init__(self, initial_pop=False):
-        # TODO ? self.agentID = ID  # unique ID int
-
         # - age -
         # if part of initial population of bilbies, randomise age otherwise start young
         if initial_pop:
