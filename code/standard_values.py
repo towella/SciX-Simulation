@@ -9,7 +9,7 @@ def scaled_hunt(agent_list, sensitivity):
     N = len(agent_list)
     hunt_threshold = N / (N + sensitivity)  # scales prob of killing bilby with bilby population
     # compare probability of kill with random gen val. Also, bilbies need to still be alive to hunt
-    if hunt_prob >= hunt_threshold and N > 0:
+    if hunt_prob <= hunt_threshold and N > 0:
         i = randint(0, N - 1)
         agent_list[i].kill()
 
@@ -25,18 +25,18 @@ hour = 60
 
 # --- simulation params ------------------------------------------------------------------------------------------------
 species = ["bilby", "fox", "plant", "hunter"]
-use_threading = False
+use_threading = True
 if use_threading:
     print("USING THREADING")
 else:
     print("NOT USING THREADING")
 
 # -- bilbies --
-bilbies = 100  # not very important as bilby carrying capacity is determined by feed input which should be reached during burn in
+bilbies = 80  # not very important as bilby carrying capacity is determined by feed input which should be reached during burn in
 
 # -- foxes --
 foxes = 6
-fox_sensitivity = 30  # must be between 1 and initial bilby population
+fox_sensitivity = 40  # must be between 1 and initial bilby population
 if fox_sensitivity < 1:
     fox_sensitivity = 1
 elif fox_sensitivity > bilbies:
@@ -49,10 +49,10 @@ if hunters_active:
     print("HUNTERS ACTIVE")
 else:
     print("HUNTERS ARE NOT ACTIVE")
-hunter_sensitivity = 1  # must be between 1 and initial fox population
+hunter_sensitivity = 3  # must be between 1 and initial fox population
 
 # -- feed --
-max_feed = 700
+max_feed = 500
 feed_per_step = max_feed / week
 
 # -- simulation duration --

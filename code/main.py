@@ -24,6 +24,9 @@ def format_file_header(species, years):
 def gen_iter_pop_line(pop_data, keys):
     line = []
     for key in keys:
+        # ensure lines are correct length
+        while len(pop_data[key]) != 144:
+            pop_data[key].append("0")
         line += pop_data[key]
     return ",".join(line)
 
@@ -124,7 +127,7 @@ for y in range(len(test_cases)):
             threads.append(thread)
         # no threading
         else:
-            iteration_set(cell_name, test_cases[3][1])
+            iteration_set(cell_name, test_cases[y][x])
 
 if use_threading:
     # join all threads
