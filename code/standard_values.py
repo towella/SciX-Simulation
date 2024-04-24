@@ -25,7 +25,7 @@ hour = 60
 
 # --- simulation params ------------------------------------------------------------------------------------------------
 species = ["bilby", "fox", "plant", "hunter"]
-use_threading = True
+use_threading = False
 if use_threading:
     print("USING THREADING")
 else:

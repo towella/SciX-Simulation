@@ -25,15 +25,13 @@ def gen_iter_pop_line(pop_data, keys):
     line = []
     for key in keys:
         # ensure lines are correct length
-        while len(pop_data[key]) != 144:
+        while len(pop_data[key]) <= 144 and key != "hunter":
             pop_data[key].append("0")
         line += pop_data[key]
     return ",".join(line)
 
 
-# batch output of multiple rows of data in format ["line", "line", ...]
 def output_to_file(file, pop_data):
-    pop_data = "\n".join(pop_data)
     file.write("\n"+pop_data)
 
 
@@ -84,30 +82,26 @@ def run_simulation(params):
 
 def iteration_set(name, params):
     print(f"\n--- Iteration set ({name}): {iterations} iters ---")  # <-- progress update
-    set_population_data = []
 
     # open file once rather than every time output
     # buffering allows for faster output to file (output in chunks)
-    with open(f"../output/{name}.csv", "w", buffering=16384) as f:
+    with open(f"../output/{name}.csv", "a", buffering=16384) as f:
         # initialise file
         header = format_file_header(species, years)
-        f.write(header)
+        f.write("\n" + header)
 
         # --- ITERATION ---
         itert = time.time()
         for iteration in range(iterations):
-            print(f"Beginning iter {iteration}")
+            print(f"Beginning iter {iteration + 1}")
             t = time.time()
             
             iter_pop_data = run_simulation(params)
 
-            # save iteration population data
-            set_population_data.append(gen_iter_pop_line(iter_pop_data, species))
+            # append iteration population data to file (saving set data with multithreading exceed memory limit)
+            output_to_file(f, gen_iter_pop_line(iter_pop_data, species))  # append to file
 
             print(f"Iteration {iteration + 1}: ", time.time() - t)  # <-- log time for one iteration
-
-        # batch output set population data rows to file
-        output_to_file(f, set_population_data)
 
         print(f"{name} complete: " + str(time.time() - itert))  # <-- log time for iteration set
 
